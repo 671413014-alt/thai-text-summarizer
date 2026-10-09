@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThaiLLM - ระบบสรุปความภาษาไทยอัจฉริยะ</title>
+    <!-- Google Fonts: Prompt -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .gradient-bg {
+            background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 50%, #020617 100%);
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-slate-100 font-sans antialiased flex flex-col justify-between selection:bg-purple-500 selection:text-white">
+
+    <!-- Header / Navbar -->
+    <header class="border-b border-slate-800/80 bg-slate-950/40 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 via-pink-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/25">
+                    <i data-lucide="sparkles" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <span class="text-lg font-bold bg-gradient-to-r from-white via-slate-200 to-purple-300 bg-clip-text text-transparent">ThaiLLM Summarizer</span>
+                    <span class="hidden sm:inline-block text-[11px] px-2.5 py-0.5 ml-2 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-medium font-mono">pathumma-qwen3-8b</span>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2 text-xs text-slate-400">
+                <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="font-medium text-slate-300">ThaiLLM API Online</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-5xl mx-auto px-4 py-10 w-full flex-1">
+        
+        <!-- Hero Section -->
+        <div class="text-center mb-8 space-y-2">
+            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-white via-purple-100 to-pink-200 bg-clip-text text-transparent">
+                ระบบสรุปความภาษาไทยด้วย ThaiLLM
+            </h1>
+            <p class="text-slate-400 max-w-xl mx-auto text-sm sm:text-base font-light">
+                สรุปเนื้อหาบทความด้วยโมเดลภาษาไทย <span class="text-purple-400 font-semibold">Pathumma Qwen3 8B</span>
+            </p>
+        </div>
+
+        <form action="/summarize" method="post" id="summarizeForm">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <!-- Left Column: Source Input (6 cols) -->
+                <div class="lg:col-span-6 space-y-4">
+                    <div class="glass-card rounded-2xl p-6">
+                        
+                        <div class="flex items-center justify-between mb-3">
+                            <label for="src" class="text-sm font-semibold text-slate-200 flex items-center space-x-2">
+                                <i data-lucide="file-text" class="w-4 h-4 text-purple-400"></i>
+                                <span>ข้อความต้นฉบับภาษาไทย</span>
+                            </label>
+                            <button type="button" onclick="loadSampleText()" class="text-xs text-purple-400 hover:text-purple-300 font-medium flex items-center space-x-1">
+                                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                                <span>ใส่ตัวอย่างบทความ</span>
+                            </button>
+                        </div>
+
+                        <!-- Textarea -->
+                        <div class="relative">
+                            <textarea 
+                                name="src" 
+                                id="src" 
+                                rows="13" 
+                                class="w-full bg-slate-950/70 border border-slate-700/80 rounded-xl p-4 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition resize-none leading-relaxed"
+                                placeholder="พิมพ์หรือวางข้อความภาษาไทยที่ต้องการให้ ThaiLLM สรุปที่นี่..."
+                                required
+                                oninput="updateCharCount()"
+                            >{{ src_text if src_text else '' }}</textarea>
+
+                            <!-- Quick Clear button on Textarea -->
+                            <button 
+                                type="button" 
+                                id="clearTextBtn" 
+                                onclick="clearInputOnly()" 
+                                title="ลบข้อความต้นฉบับ"
+                                class="hidden absolute top-3 right-3 p-1.5 rounded-lg bg-slate-800/80 hover:bg-rose-500/80 text-slate-400 hover:text-white transition"
+                            >
+                                <i data-lucide="x" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+
+                        <div class="flex items-center justify-between mt-2 text-xs text-slate-400">
+                            <span id="charCount">0 ตัวอักษร</span>
+                            <button type="button" onclick="clearInputOnly()" class="text-slate-500 hover:text-rose-400 transition flex items-center space-x-1">
+                                <i data-lucide="eraser" class="w-3.5 h-3.5"></i>
+                                <span>ลบข้อความต้นฉบับ</span>
+                            </button>
+                        </div>
+
+                        <!-- Style Selection -->
+                        <div class="mt-4 pt-3 border-t border-slate-800">
+                            <label class="text-xs font-semibold text-slate-300 block mb-2">รูปแบบการสรุปความ:</label>
+                            <div class="grid grid-cols-3 gap-2 text-xs">
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="style" value="medium" class="sr-only peer" {% if not style or style == 'medium' %}checked{% endif %}>
+                                    <div class="p-2.5 rounded-lg border border-slate-700 bg-slate-900/60 peer-checked:border-purple-500 peer-checked:bg-purple-950/40 text-center text-slate-300 peer-checked:text-purple-300 font-medium transition">
+                                        มาตรฐาน
+                                    </div>
+                                </label>
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="style" value="short" class="sr-only peer" {% if style == 'short' %}checked{% endif %}>
+                                    <div class="p-2.5 rounded-lg border border-slate-700 bg-slate-900/60 peer-checked:border-purple-500 peer-checked:bg-purple-950/40 text-center text-slate-300 peer-checked:text-purple-300 font-medium transition">
+                                        กระชับสั้น
+                                    </div>
+                                </label>
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="style" value="bullet" class="sr-only peer" {% if style == 'bullet' %}checked{% endif %}>
+                                    <div class="p-2.5 rounded-lg border border-slate-700 bg-slate-900/60 peer-checked:border-purple-500 peer-checked:bg-purple-950/40 text-center text-slate-300 peer-checked:text-purple-300 font-medium transition">
+                                        หัวข้อย่อย
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons: Submit / Clear All -->
+                        <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <button type="submit" id="submitBtn" class="py-3.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-purple-500/30 flex items-center justify-center space-x-2 transition-all transform active:scale-95 disabled:opacity-50">
+                                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                                <span>สรุปความด้วย ThaiLLM</span>
+                            </button>
+
+                            <button type="button" id="clearAllBtn" onclick="clearAllData()" class="py-3.5 px-4 rounded-xl bg-slate-800/80 hover:bg-rose-950/40 border border-slate-700 hover:border-rose-500/50 text-slate-300 hover:text-rose-300 font-semibold text-sm flex items-center justify-center space-x-2 transition-all transform active:scale-95">
+                                <i data-lucide="trash-2" class="w-4 h-4 text-rose-400"></i>
+                                <span>ลบผลการสรุปและข้อความ</span>
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Right Column: ThaiLLM Output (6 cols) -->
+                <div class="lg:col-span-6 space-y-4">
+                    <div class="glass-card rounded-2xl p-6 h-full flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-sm font-semibold text-slate-200 flex items-center space-x-2">
+                                    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+                                    <span>ผลการสรุปความภาษาไทย (ThaiLLM Result)</span>
+                                </h3>
+                                
+                                <div class="flex items-center space-x-2">
+                                    <button 
+                                        type="button" 
+                                        id="clearResultBtn" 
+                                        onclick="clearResultOnly()" 
+                                        title="ลบเฉพาะผลสรุป" 
+                                        class="{% if not result or not result.ok %}hidden{% endif %} text-xs text-rose-400 hover:text-rose-300 font-medium flex items-center space-x-1 px-2 py-1 rounded bg-rose-500/10 border border-rose-500/20"
+                                    >
+                                        <i data-lucide="trash" class="w-3.5 h-3.5"></i>
+                                        <span>ลบผลสรุป</span>
+                                    </button>
+
+                                    {% if result and result.ok %}
+                                    <button type="button" onclick="copyResult()" class="text-xs text-purple-400 hover:text-purple-300 font-medium flex items-center space-x-1" id="copyBtn">
+                                        <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                                        <span id="copyText">คัดลอก</span>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Result Display Container -->
+                            <div id="resultContainer">
+                                {% if result %}
+                                    {% if result.ok %}
+                                    <div class="bg-slate-950/80 border border-purple-500/30 rounded-xl p-5 relative overflow-hidden">
+                                        <div class="flex items-center space-x-2 mb-3">
+                                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                            <span class="text-xs font-semibold text-purple-300">ประมวลผลโดย {{ result.model }}</span>
+                                        </div>
+                                        <div id="summaryOutput" class="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap font-normal">
+                                            {{ result.summary }}
+                                        </div>
+                                    </div>
+
+                                    <!-- Stats metrics -->
+                                    <div class="grid grid-cols-2 gap-3 mt-4 text-center" id="statsContainer">
+                                        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3">
+                                            <div class="text-[11px] text-slate-400">ความยาวต้นฉบับ</div>
+                                            <div class="text-base font-bold text-slate-200 mt-0.5">{{ result.src_length }} ตัวอักษร</div>
+                                        </div>
+                                        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3">
+                                            <div class="text-[11px] text-slate-400">ความยาวที่สรุปได้</div>
+                                            <div class="text-base font-bold text-purple-400 mt-0.5">{{ result.summary_length }} ตัวอักษร</div>
+                                        </div>
+                                    </div>
+                                    {% else %}
+                                    <div class="p-4 rounded-xl bg-rose-950/30 border border-rose-500/30 text-rose-300">
+                                        <div class="flex items-center space-x-2 mb-1">
+                                            <i data-lucide="alert-circle" class="w-4 h-4 text-rose-400"></i>
+                                            <span class="text-xs font-bold">เกิดข้อผิดพลาดในการเชื่อมต่อ</span>
+                                        </div>
+                                        <p class="text-xs text-rose-300/80">{{ result.errmsg }}</p>
+                                    </div>
+                                    {% endif %}
+                                {% else %}
+                                <div class="h-64 flex flex-col items-center justify-center text-center text-slate-500 space-y-3">
+                                    <div class="w-14 h-14 rounded-2xl bg-slate-800/50 border border-slate-700/50 flex items-center justify-center">
+                                        <i data-lucide="message-square-quote" class="w-6 h-6 text-purple-400"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-slate-400">ยังไม่มีข้อมูลสรุปความ</p>
+                                        <p class="text-xs text-slate-500 mt-1">วางข้อความทางซ้าย แล้วกดปุ่มเพื่อเริ่มสรุปด้วย ThaiLLM</p>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Footer indicator -->
+                        <div class="mt-6 pt-4 border-t border-slate-800 text-[11px] text-slate-500 flex items-center justify-between">
+                            <span>API: http://thaillm.or.th</span>
+                            <span>Engine: Pathumma Qwen3 8B</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </form>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/80 py-4 text-center text-xs text-slate-500">
+        ThaiLLM Text Summarization &copy; 2026 | Powered by thaillm.or.th (Pathumma) & Flask
+    </footer>
+
+    <script>
+        // Init Lucide Icons
+        lucide.createIcons();
+
+        const sampleContent = "ข้าว เป็นเมล็ดของพืชหญ้า Oryza sativa (ชื่อสามัญ: ข้าวเอเชีย) ที่พบมากในทวีปเอเชีย ข้าวเป็นธัญพืชซึ่งประชากรโลกบริโภคเป็นอาหารสำคัญ โดยเฉพาะอย่างยิ่งในทวีปเอเชีย จากข้อมูลเมื่อปี 2553 ข้าวเป็นธัญพืชซึ่งมีการปลูกมากที่สุดเป็นอันดับสามทั่วโลก รองจากข้าวสาลีและข้าวโพด ข้าวเป็นธัญพืชสำคัญที่สุดในด้านโภชนาการและการได้รับแคลอรีของมนุษย์ เพราะข้าวโพดส่วนใหญ่ปลูกเพื่อจุดประสงค์อื่น มิใช่ให้มนุษย์บริโภค ทั้งนี้ ข้าวคิดเป็นพลังงานกว่าหนึ่งในห้าที่มนุษย์ทั่วโลกบริโภค หลักฐานพันธุศาสตร์แสดงว่าข้าวมาจากการนำมาปลูกเมื่อราว 8,200–13,500 ปีก่อน ในภูมิภาคหุบแม่น้ำจูเจียงของจีน ก่อนหน้านี้ หลักฐานโบราณคดีเสนอว่า ข้าวมีการนำมาปลูกในเขตหุบแม่น้ำแยงซีในจีน ข้าวแพร่กระจายจากเอเชียตะวันออกไปยังเอเชียตะวันออกเฉียงใต้และเอเชียใต้ ข้าวถูกนำมายังทวีปยุโรปผ่านเอเชียตะวันตก และทวีปอเมริกาผ่านการยึดอาณานิคมของยุโรป[3] ปกติการปลูกข้าวเป็นแบบปีต่อปี ทว่าในเขตร้อน ข้าวสามารถมีชีวิตอยู่ได้หลายปีและสามารถไว้ตอ (ratoon) ได้นานถึง 30 ปี ต้นข้าวสามารถโตได้ถึง 1–1.8 เมตร ขึ้นอยู่กับพันธุ์และความอุดมสมบูรณ์ของดินเป็นหลัก มีใบเรียว ยาว 50-100 เซนติเมตร และกว้าง 2-2.5 เซนติเมตร ช่อดอกห้อยยาว 30-50 เซนติเมตร เมล็ดกินได้เป็นผลธัญพืชยาว 5-12 มิลลิเมตร และหนา 2-3 มิลลิเมตร การเตรียมดินสำหรับเพาะปลูกข้าวเหมาะกับประเทศและภูมิภาคที่ค่าแรงต่ำและฝนตกมาก เนื่องจากมันใช้แรงงานมากที่จะเตรียมดินและต้องการน้ำเพียงพอ อย่างไรก็ตาม ข้าวสามารถโตได้เกือบทุกที่ แม้บนเนินชันหรือเขตภูเขาที่ใช้ระบบควบคุมน้ำแบบขั้นบันได แม้ว่าสปีชีส์บุพการีของมันเป็นสิ่งพื้นเมืองของเอเชียและส่วนที่แน่นอนของแอฟริกา ร้อยปีของการค้าขายและการส่งออกทำให้มันสามัญในหลายวัฒนธรรมทั่วโลก";
+
+        function loadSampleText() {
+            const textarea = document.getElementById('src');
+            textarea.value = sampleContent;
+            updateCharCount();
+        }
+
+        function updateCharCount() {
+            const textarea = document.getElementById('src');
+            const clearBtn = document.getElementById('clearTextBtn');
+            const val = textarea.value;
+            
+            document.getElementById('charCount').innerText = `${val.length} ตัวอักษร`;
+
+            if (val.length > 0) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+            }
+        }
+
+        // 1. ลบเฉพาะข้อความต้นฉบับ
+        function clearInputOnly() {
+            const textarea = document.getElementById('src');
+            textarea.value = '';
+            textarea.focus();
+            updateCharCount();
+        }
+
+        // 2. ลบเฉพาะผลสรุปความภาษาไทย
+        function clearResultOnly() {
+            const resultBox = document.getElementById('resultContainer');
+            const clearResultBtn = document.getElementById('clearResultBtn');
+            const copyBtn = document.getElementById('copyBtn');
+
+            resultBox.innerHTML = `
+                <div class="h-64 flex flex-col items-center justify-center text-center text-slate-500 space-y-3">
+                    <div class="w-14 h-14 rounded-2xl bg-slate-800/50 border border-slate-700/50 flex items-center justify-center">
+                        <i data-lucide="message-square-quote" class="w-6 h-6 text-purple-400"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-slate-400">ลบผลการสรุปความเรียบร้อย</p>
+                        <p class="text-xs text-slate-500 mt-1">กดปุ่ม "สรุปความด้วย ThaiLLM" เพื่อประมวลผลใหม่</p>
+                    </div>
+                </div>
+            `;
+            if (clearResultBtn) clearResultBtn.classList.add('hidden');
+            if (copyBtn) copyBtn.classList.add('hidden');
+            lucide.createIcons();
+        }
+
+        // 3. ลบทั้งข้อความต้นฉบับและผลสรุปความ
+        function clearAllData() {
+            clearInputOnly();
+            clearResultOnly();
+        }
+
+        function copyResult() {
+            const summaryElem = document.getElementById('summaryOutput');
+            if (!summaryElem) return;
+            const text = summaryElem.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const copyTextElem = document.getElementById('copyText');
+                if (copyTextElem) {
+                    copyTextElem.innerText = "คัดลอกแล้ว!";
+                    setTimeout(() => {
+                        copyTextElem.innerText = "คัดลอก";
+                    }, 2000);
+                }
+            });
+        }
+
+        updateCharCount();
+
+        // Loading state on submit
+        document.getElementById('summarizeForm').addEventListener('submit', function() {
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> กำลังสรุปความด้วย ThaiLLM...`;
+        });
+    </script>
+</body>
+</html>
