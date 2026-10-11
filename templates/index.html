@@ -1,346 +1,1143 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="th" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ThaiLLM - ระบบสรุปความภาษาไทยอัจฉริยะ</title>
-    <!-- Google Fonts: Prompt -->
+    <title>ThaiLLM Studio - ระบบสรุปความภาษาไทยอัจฉริยะ</title>
+    
+    <!-- Google Fonts: Plus Jakarta Sans & Prompt -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Prompt', 'sans-serif'],
+                        sans: ['"Plus Jakarta Sans"', 'Prompt', 'system-ui', 'sans-serif'],
+                        thai: ['Prompt', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            200: '#ddd6fe',
+                            300: '#c4b5fd',
+                            400: '#a78bfa',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            800: '#5b21b6',
+                            900: '#4c1d95',
+                            950: '#2e1065',
+                        }
+                    },
+                    boxShadow: {
+                        'subtle': '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03)',
+                        'card': '0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03)',
+                        'card-dark': '0 8px 32px -4px rgba(0, 0, 0, 0.5), 0 2px 8px -1px rgba(0, 0, 0, 0.3)',
+                        'glow': '0 0 25px -5px rgba(124, 58, 237, 0.35)',
                     }
                 }
             }
         }
     </script>
     <style>
-        .gradient-bg {
-            background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 50%, #020617 100%);
+        /* Smooth transitions */
+        * {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
-        .glass-card {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+        
+        /* Modern subtle scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.25);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.45);
+        }
+
+        /* Glassmorphism surface styling */
+        .glass-panel {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        
+        /* Skeleton shimmer animation */
+        @keyframes shimmer {
+            100% {
+                transform: translateX(100%);
+            }
+        }
+        .shimmer-active {
+            position: relative;
+            overflow: hidden;
+        }
+        .shimmer-active::after {
+            position: absolute;
+            top: 0; right: 0; bottom: 0; left: 0;
+            transform: translateX(-100%);
+            background-image: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0) 0,
+                rgba(255, 255, 255, 0.06) 20%,
+                rgba(255, 255, 255, 0.12) 60%,
+                rgba(255, 255, 255, 0)
+            );
+            animation: shimmer 1.8s infinite;
+            content: '';
+        }
+        .light .shimmer-active::after {
+            background-image: linear-gradient(
+                90deg,
+                rgba(0, 0, 0, 0) 0,
+                rgba(0, 0, 0, 0.03) 20%,
+                rgba(0, 0, 0, 0.06) 60%,
+                rgba(0, 0, 0, 0)
+            );
         }
     </style>
 </head>
-<body class="gradient-bg min-h-screen text-slate-100 font-sans antialiased flex flex-col justify-between selection:bg-purple-500 selection:text-white">
+<body class="bg-slate-50 dark:bg-[#090d16] text-slate-800 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-200 font-sans selection:bg-brand-500 selection:text-white">
 
-    <!-- Header / Navbar -->
-    <header class="border-b border-slate-800/80 bg-slate-950/40 backdrop-blur-md sticky top-0 z-50">
-        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 via-pink-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/25">
-                    <i data-lucide="sparkles" class="w-6 h-6 text-white"></i>
+    <!-- Top Navigation Bar -->
+    <header class="sticky top-0 z-40 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-[#090d16]/80 glass-panel">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            
+            <!-- Logo & Brand -->
+            <div class="flex items-center space-x-3.5">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-600 to-sky-500 flex items-center justify-center shadow-lg shadow-brand-500/20 ring-1 ring-white/20">
+                    <i data-lucide="sparkles" class="w-5 h-5 text-white"></i>
                 </div>
                 <div>
-                    <span class="text-lg font-bold bg-gradient-to-r from-white via-slate-200 to-purple-300 bg-clip-text text-transparent">ThaiLLM Summarizer</span>
-                    <span class="hidden sm:inline-block text-[11px] px-2.5 py-0.5 ml-2 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-medium font-mono">pathumma-qwen3-8b</span>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-base sm:text-lg font-bold tracking-tight bg-gradient-to-r from-slate-900 via-slate-700 to-slate-900 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent">
+                            ThaiLLM Studio
+                        </span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-brand-500/10 text-brand-700 dark:text-brand-300 border border-brand-500/20 font-mono">
+                            Pathumma 8B
+                        </span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 font-thai hidden sm:block">
+                        ระบบสรุปความภาษาไทยความแม่นยำสูง
+                    </p>
                 </div>
             </div>
-            <div class="flex items-center space-x-2 text-xs text-slate-400">
-                <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span class="font-medium text-slate-300">ThaiLLM API Online</span>
+
+            <!-- Right Controls -->
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <!-- API Status Badge -->
+                <div class="hidden md:flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/10 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>API Connected</span>
+                </div>
+
+                <!-- History Button -->
+                <button 
+                    type="button" 
+                    onclick="toggleHistoryDrawer()" 
+                    class="relative p-2.5 rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/60 dark:hover:bg-slate-800 border border-transparent dark:border-slate-700/60 transition"
+                    title="ประวัติการสรุปความ"
+                >
+                    <i data-lucide="history" class="w-4 h-4"></i>
+                    <span id="historyBadge" class="hidden absolute -top-1 -right-1 w-4 h-4 rounded-full bg-brand-600 text-[10px] font-bold text-white flex items-center justify-center">0</span>
+                </button>
+
+                <!-- Theme Toggle Button -->
+                <button 
+                    type="button" 
+                    id="themeToggleBtn"
+                    onclick="toggleTheme()" 
+                    class="p-2.5 rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/60 dark:hover:bg-slate-800 border border-transparent dark:border-slate-700/60 transition"
+                    title="สลับธีม สว่าง / มืด"
+                >
+                    <i data-lucide="sun" id="sunIcon" class="w-4 h-4 hidden"></i>
+                    <i data-lucide="moon" id="moonIcon" class="w-4 h-4"></i>
+                </button>
+
+                <!-- Help / Info Modal Button -->
+                <button 
+                    type="button" 
+                    onclick="openInfoModal()" 
+                    class="p-2.5 rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/60 dark:hover:bg-slate-800 border border-transparent dark:border-slate-700/60 transition"
+                    title="เกี่ยวกับระบบ"
+                >
+                    <i data-lucide="info" class="w-4 h-4"></i>
+                </button>
             </div>
         </div>
     </header>
 
-    <!-- Main Container -->
-    <main class="max-w-5xl mx-auto px-4 py-10 w-full flex-1">
+    <!-- Main Workspace -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 w-full flex-1">
         
-        <!-- Hero Section -->
-        <div class="text-center mb-8 space-y-2">
-            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-white via-purple-100 to-pink-200 bg-clip-text text-transparent">
-                ระบบสรุปความภาษาไทยด้วย ThaiLLM
-            </h1>
-            <p class="text-slate-400 max-w-xl mx-auto text-sm sm:text-base font-light">
-                สรุปเนื้อหาบทความด้วยโมเดลภาษาไทย <span class="text-purple-400 font-semibold">Pathumma Qwen3 8B</span>
-            </p>
+        <!-- Header Introduction banner -->
+        <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+                <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white font-thai flex items-center gap-2">
+                    สรุปเนื้อหาบทความภาษาไทย
+                    <span class="text-xs font-normal px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400">Pure Thai NLP</span>
+                </h1>
+                <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-thai mt-0.5">
+                    ประมวลผลข้อความยาว วิเคราะห์ใจความสำคัญ และสังเคราะห์เนื้อหาภาษาไทยอย่างเป็นธรรมชาติ
+                </p>
+            </div>
+
+            <!-- Quick Style Segmented Selector -->
+            <div class="flex items-center p-1 rounded-xl bg-slate-200/70 dark:bg-slate-800/80 border border-slate-300/60 dark:border-slate-700/60 text-xs font-medium self-start md:self-auto">
+                <button 
+                    type="button" 
+                    data-style="medium" 
+                    onclick="setStyle('medium')" 
+                    class="style-pill active px-3.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 bg-white dark:bg-slate-700 shadow-subtle text-slate-900 dark:text-white font-semibold"
+                >
+                    <i data-lucide="file-text" class="w-3.5 h-3.5 text-brand-500"></i>
+                    <span>มาตรฐาน</span>
+                </button>
+                <button 
+                    type="button" 
+                    data-style="short" 
+                    onclick="setStyle('short')" 
+                    class="style-pill px-3.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                >
+                    <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+                    <span>กระชับสั้น (2-3 บรรทัด)</span>
+                </button>
+                <button 
+                    type="button" 
+                    data-style="bullet" 
+                    onclick="setStyle('bullet')" 
+                    class="style-pill px-3.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                >
+                    <i data-lucide="list" class="w-3.5 h-3.5"></i>
+                    <span>หัวข้อย่อย (Bullet)</span>
+                </button>
+            </div>
         </div>
 
-        <form action="/summarize" method="post" id="summarizeForm">
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- 2-Column Split Workspace -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
 
-                <!-- Left Column: Source Input (6 cols) -->
-                <div class="lg:col-span-6 space-y-4">
-                    <div class="glass-card rounded-2xl p-6">
-                        
-                        <div class="flex items-center justify-between mb-3">
-                            <label for="src" class="text-sm font-semibold text-slate-200 flex items-center space-x-2">
-                                <i data-lucide="file-text" class="w-4 h-4 text-purple-400"></i>
-                                <span>ข้อความต้นฉบับภาษาไทย</span>
-                            </label>
-                            <button type="button" onclick="loadSampleText()" class="text-xs text-purple-400 hover:text-purple-300 font-medium flex items-center space-x-1">
-                                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
-                                <span>ใส่ตัวอย่างบทความ</span>
-                            </button>
-                        </div>
+            <!-- LEFT CARD: Source Input Area -->
+            <div class="flex flex-col bg-white dark:bg-[#0f172a]/95 rounded-2xl border border-slate-200 dark:border-slate-800/80 shadow-card dark:shadow-card-dark overflow-hidden transition-all duration-200">
+                
+                <!-- Card Header with Utility Controls -->
+                <div class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/30">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-brand-500"></span>
+                        <h2 class="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 font-thai">
+                            ข้อความต้นฉบับ
+                        </h2>
+                    </div>
 
-                        <!-- Textarea -->
-                        <div class="relative">
-                            <textarea 
-                                name="src" 
-                                id="src" 
-                                rows="13" 
-                                class="w-full bg-slate-950/70 border border-slate-700/80 rounded-xl p-4 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition resize-none leading-relaxed"
-                                placeholder="พิมพ์หรือวางข้อความภาษาไทยที่ต้องการให้ ThaiLLM สรุปที่นี่..."
-                                required
-                                oninput="updateCharCount()"
-                            >{{ src_text if src_text else '' }}</textarea>
+                    <!-- Input Toolbar -->
+                    <div class="flex items-center space-x-1.5">
+                        <!-- Paste from Clipboard -->
+                        <button 
+                            type="button" 
+                            onclick="pasteClipboard()" 
+                            class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition flex items-center space-x-1 font-thai"
+                            title="วางข้อความจาก Clipboard"
+                        >
+                            <i data-lucide="clipboard" class="w-3.5 h-3.5"></i>
+                            <span class="hidden sm:inline">วางข้อความ</span>
+                        </button>
 
-                            <!-- Quick Clear button on Textarea -->
-                            <button 
-                                type="button" 
-                                id="clearTextBtn" 
-                                onclick="clearInputOnly()" 
-                                title="ลบข้อความต้นฉบับ"
-                                class="hidden absolute top-3 right-3 p-1.5 rounded-lg bg-slate-800/80 hover:bg-rose-500/80 text-slate-400 hover:text-white transition"
-                            >
-                                <i data-lucide="x" class="w-4 h-4"></i>
-                            </button>
-                        </div>
+                        <!-- Load Sample Article -->
+                        <button 
+                            type="button" 
+                            onclick="loadSampleText()" 
+                            class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition flex items-center space-x-1 font-thai"
+                            title="โหลดตัวอย่างบทความทดสอบ"
+                        >
+                            <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+                            <span class="hidden sm:inline">ใส่ตัวอย่าง</span>
+                        </button>
 
-                        <div class="flex items-center justify-between mt-2 text-xs text-slate-400">
-                            <span id="charCount">0 ตัวอักษร</span>
-                            <button type="button" onclick="clearInputOnly()" class="text-slate-500 hover:text-rose-400 transition flex items-center space-x-1">
-                                <i data-lucide="eraser" class="w-3.5 h-3.5"></i>
-                                <span>ลบข้อความต้นฉบับ</span>
-                            </button>
-                        </div>
-
-                        <!-- Style Selection -->
-                        <div class="mt-4 pt-3 border-t border-slate-800">
-                            <label class="text-xs font-semibold text-slate-300 block mb-2">รูปแบบการสรุปความ:</label>
-                            <div class="grid grid-cols-3 gap-2 text-xs">
-                                <label class="cursor-pointer">
-                                    <input type="radio" name="style" value="medium" class="sr-only peer" {% if not style or style == 'medium' %}checked{% endif %}>
-                                    <div class="p-2.5 rounded-lg border border-slate-700 bg-slate-900/60 peer-checked:border-purple-500 peer-checked:bg-purple-950/40 text-center text-slate-300 peer-checked:text-purple-300 font-medium transition">
-                                        มาตรฐาน
-                                    </div>
-                                </label>
-                                <label class="cursor-pointer">
-                                    <input type="radio" name="style" value="short" class="sr-only peer" {% if style == 'short' %}checked{% endif %}>
-                                    <div class="p-2.5 rounded-lg border border-slate-700 bg-slate-900/60 peer-checked:border-purple-500 peer-checked:bg-purple-950/40 text-center text-slate-300 peer-checked:text-purple-300 font-medium transition">
-                                        กระชับสั้น
-                                    </div>
-                                </label>
-                                <label class="cursor-pointer">
-                                    <input type="radio" name="style" value="bullet" class="sr-only peer" {% if style == 'bullet' %}checked{% endif %}>
-                                    <div class="p-2.5 rounded-lg border border-slate-700 bg-slate-900/60 peer-checked:border-purple-500 peer-checked:bg-purple-950/40 text-center text-slate-300 peer-checked:text-purple-300 font-medium transition">
-                                        หัวข้อย่อย
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Action Buttons: Submit / Clear All -->
-                        <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <button type="submit" id="submitBtn" class="py-3.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-purple-500/30 flex items-center justify-center space-x-2 transition-all transform active:scale-95 disabled:opacity-50">
-                                <i data-lucide="sparkles" class="w-4 h-4"></i>
-                                <span>สรุปความด้วย ThaiLLM</span>
-                            </button>
-
-                            <button type="button" id="clearAllBtn" onclick="clearAllData()" class="py-3.5 px-4 rounded-xl bg-slate-800/80 hover:bg-rose-950/40 border border-slate-700 hover:border-rose-500/50 text-slate-300 hover:text-rose-300 font-semibold text-sm flex items-center justify-center space-x-2 transition-all transform active:scale-95">
-                                <i data-lucide="trash-2" class="w-4 h-4 text-rose-400"></i>
-                                <span>ลบผลการสรุปและข้อความ</span>
-                            </button>
-                        </div>
-
+                        <!-- Clear Source Text -->
+                        <button 
+                            type="button" 
+                            onclick="clearSource()" 
+                            id="clearSourceBtn" 
+                            class="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition opacity-0 pointer-events-none"
+                            title="ล้างข้อความต้นฉบับ"
+                        >
+                            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                        </button>
                     </div>
                 </div>
 
-                <!-- Right Column: ThaiLLM Output (6 cols) -->
-                <div class="lg:col-span-6 space-y-4">
-                    <div class="glass-card rounded-2xl p-6 h-full flex flex-col justify-between">
-                        <div>
-                            <div class="flex items-center justify-between mb-3">
-                                <h3 class="text-sm font-semibold text-slate-200 flex items-center space-x-2">
-                                    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
-                                    <span>ผลการสรุปความภาษาไทย (ThaiLLM Result)</span>
-                                </h3>
-                                
-                                <div class="flex items-center space-x-2">
-                                    <button 
-                                        type="button" 
-                                        id="clearResultBtn" 
-                                        onclick="clearResultOnly()" 
-                                        title="ลบเฉพาะผลสรุป" 
-                                        class="{% if not result or not result.ok %}hidden{% endif %} text-xs text-rose-400 hover:text-rose-300 font-medium flex items-center space-x-1 px-2 py-1 rounded bg-rose-500/10 border border-rose-500/20"
-                                    >
-                                        <i data-lucide="trash" class="w-3.5 h-3.5"></i>
-                                        <span>ลบผลสรุป</span>
-                                    </button>
+                <!-- Textarea Editor -->
+                <div class="relative flex-1 p-4 sm:p-5 flex flex-col min-h-[340px] lg:min-h-[460px]">
+                    <textarea 
+                        id="srcInput" 
+                        class="w-full flex-1 bg-transparent resize-none border-0 p-0 text-sm sm:text-base text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-0 leading-relaxed font-thai"
+                        placeholder="พิมพ์ คัดลอก หรือวางข้อความภาษาไทยที่ต้องการสรุปความที่นี่... (เช่น ข่าว บทความวิชาการ รายงานการประชุม หรือเอกสารต่างๆ)"
+                        oninput="onInputChanged()"
+                    >{{ src_text or '' }}</textarea>
+                </div>
 
-                                    {% if result and result.ok %}
-                                    <button type="button" onclick="copyResult()" class="text-xs text-purple-400 hover:text-purple-300 font-medium flex items-center space-x-1" id="copyBtn">
-                                        <i data-lucide="copy" class="w-3.5 h-3.5"></i>
-                                        <span id="copyText">คัดลอก</span>
-                                    </button>
-                                    {% endif %}
-                                </div>
-                            </div>
+                <!-- Source Status & Live Word Count Footer -->
+                <div class="px-5 py-3 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    <div class="flex items-center space-x-3">
+                        <span id="charCountLabel" class="font-mono">0 ตัวอักษร</span>
+                        <span>•</span>
+                        <span id="wordCountLabel" class="font-mono">0 คำ</span>
+                        <span>•</span>
+                        <span id="readTimeLabel">เวลาอ่าน ~0 นาที</span>
+                    </div>
 
-                            <!-- Result Display Container -->
-                            <div id="resultContainer">
-                                {% if result %}
-                                    {% if result.ok %}
-                                    <div class="bg-slate-950/80 border border-purple-500/30 rounded-xl p-5 relative overflow-hidden">
-                                        <div class="flex items-center space-x-2 mb-3">
-                                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                                            <span class="text-xs font-semibold text-purple-300">ประมวลผลโดย {{ result.model }}</span>
-                                        </div>
-                                        <div id="summaryOutput" class="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap font-normal">
-                                            {{ result.summary }}
-                                        </div>
-                                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="hidden sm:inline text-[11px] text-slate-400 dark:text-slate-500">คีย์ลัด:</span>
+                        <kbd class="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono rounded bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400">Ctrl + Enter</kbd>
+                    </div>
+                </div>
 
-                                    <!-- Stats metrics -->
-                                    <div class="grid grid-cols-2 gap-3 mt-4 text-center" id="statsContainer">
-                                        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3">
-                                            <div class="text-[11px] text-slate-400">ความยาวต้นฉบับ</div>
-                                            <div class="text-base font-bold text-slate-200 mt-0.5">{{ result.src_length }} ตัวอักษร</div>
-                                        </div>
-                                        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3">
-                                            <div class="text-[11px] text-slate-400">ความยาวที่สรุปได้</div>
-                                            <div class="text-base font-bold text-purple-400 mt-0.5">{{ result.summary_length }} ตัวอักษร</div>
-                                        </div>
-                                    </div>
-                                    {% else %}
-                                    <div class="p-4 rounded-xl bg-rose-950/30 border border-rose-500/30 text-rose-300">
-                                        <div class="flex items-center space-x-2 mb-1">
-                                            <i data-lucide="alert-circle" class="w-4 h-4 text-rose-400"></i>
-                                            <span class="text-xs font-bold">เกิดข้อผิดพลาดในการเชื่อมต่อ</span>
-                                        </div>
-                                        <p class="text-xs text-rose-300/80">{{ result.errmsg }}</p>
-                                    </div>
-                                    {% endif %}
-                                {% else %}
-                                <div class="h-64 flex flex-col items-center justify-center text-center text-slate-500 space-y-3">
-                                    <div class="w-14 h-14 rounded-2xl bg-slate-800/50 border border-slate-700/50 flex items-center justify-center">
-                                        <i data-lucide="message-square-quote" class="w-6 h-6 text-purple-400"></i>
-                                    </div>
-                                    <div>
-                                        <p class="text-sm font-medium text-slate-400">ยังไม่มีข้อมูลสรุปความ</p>
-                                        <p class="text-xs text-slate-500 mt-1">วางข้อความทางซ้าย แล้วกดปุ่มเพื่อเริ่มสรุปด้วย ThaiLLM</p>
-                                    </div>
-                                </div>
-                                {% endif %}
-                            </div>
+                <!-- Primary Action Bar -->
+                <div class="p-4 sm:p-5 bg-white dark:bg-[#0f172a] border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-3">
+                    <button 
+                        type="button" 
+                        onclick="resetAll()" 
+                        class="px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-300 text-xs sm:text-sm font-medium transition flex items-center space-x-1.5 font-thai"
+                    >
+                        <i data-lucide="rotate-ccw" class="w-4 h-4 text-slate-400"></i>
+                        <span>รีเซ็ตทั้งหมด</span>
+                    </button>
+
+                    <button 
+                        type="button" 
+                        id="submitActionBtn"
+                        onclick="triggerSummarize()" 
+                        class="flex-1 sm:flex-initial sm:min-w-[200px] px-6 py-3 rounded-xl bg-gradient-to-r from-brand-600 via-indigo-600 to-brand-700 hover:from-brand-500 hover:to-brand-600 text-white font-semibold text-xs sm:text-sm shadow-md shadow-brand-500/25 hover:shadow-lg hover:shadow-brand-500/35 transition-all transform active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center space-x-2 font-thai"
+                    >
+                        <i data-lucide="sparkles" class="w-4 h-4" id="submitIcon"></i>
+                        <span id="submitLabel">สรุปความด้วย ThaiLLM</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- RIGHT CARD: AI Summary Result Area -->
+            <div class="flex flex-col bg-white dark:bg-[#0f172a]/95 rounded-2xl border border-slate-200 dark:border-slate-800/80 shadow-card dark:shadow-card-dark overflow-hidden transition-all duration-200">
+                
+                <!-- Card Header with Result Controls -->
+                <div class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/30">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500" id="resultStatusDot"></span>
+                        <h2 class="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 font-thai">
+                            ผลการสรุปความ
+                        </h2>
+                        <span id="modelBadge" class="hidden text-[10px] px-2 py-0.5 rounded-full font-mono bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                            Pathumma
+                        </span>
+                    </div>
+
+                    <!-- Result Toolbar (Copy, Read aloud, Download, Delete) -->
+                    <div class="flex items-center space-x-1" id="resultToolbar" style="display: none;">
+                        <!-- Listen / TTS -->
+                        <button 
+                            type="button" 
+                            id="speakBtn" 
+                            onclick="toggleSpeech()" 
+                            class="p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition flex items-center space-x-1 font-thai"
+                            title="ฟังเสียงอ่านผลสรุป (Web Speech API)"
+                        >
+                            <i data-lucide="volume-2" id="speechIcon" class="w-3.5 h-3.5"></i>
+                            <span class="hidden sm:inline" id="speechText">ฟังเสียง</span>
+                        </button>
+
+                        <!-- Copy to Clipboard -->
+                        <button 
+                            type="button" 
+                            onclick="copySummary()" 
+                            id="copyResultBtn" 
+                            class="p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition flex items-center space-x-1 font-thai"
+                            title="คัดลอกผลสรุป"
+                        >
+                            <i data-lucide="copy" class="w-3.5 h-3.5" id="copyIcon"></i>
+                            <span class="hidden sm:inline" id="copyText">คัดลอก</span>
+                        </button>
+
+                        <!-- Download File -->
+                        <button 
+                            type="button" 
+                            onclick="downloadSummary()" 
+                            class="p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition flex items-center space-x-1 font-thai"
+                            title="ดาวน์โหลดเป็นไฟล์ข้อความ (.txt)"
+                        >
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                            <span class="hidden sm:inline">บันทึก</span>
+                        </button>
+
+                        <!-- Clear Result Only -->
+                        <button 
+                            type="button" 
+                            onclick="clearResult()" 
+                            class="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
+                            title="ลบผลสรุปนี้"
+                        >
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Main Content Stage -->
+                <div class="relative flex-1 p-5 flex flex-col min-h-[340px] lg:min-h-[460px] overflow-y-auto">
+                    
+                    <!-- 1. EMPTY STATE -->
+                    <div id="stateEmpty" class="my-auto flex flex-col items-center justify-center text-center py-12 px-4">
+                        <div class="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 flex items-center justify-center text-slate-400 dark:text-slate-500 mb-4 transition-transform hover:scale-105">
+                            <i data-lucide="sparkles" class="w-7 h-7 text-brand-500/70"></i>
+                        </div>
+                        <h3 class="text-sm sm:text-base font-semibold text-slate-700 dark:text-slate-300 font-thai">
+                            ยังไม่มีข้อมูลสรุปความ
+                        </h3>
+                        <p class="text-xs sm:text-sm text-slate-400 dark:text-slate-500 font-thai max-w-sm mt-1.5 leading-relaxed">
+                            ใส่ข้อความภาษาไทยในฝั่งซ้าย แล้วคลิก <span class="font-medium text-brand-600 dark:text-brand-400">"สรุปความด้วย ThaiLLM"</span> เพื่อประมวลผลทันที
+                        </p>
+                    </div>
+
+                    <!-- 2. LOADING SKELETON STATE -->
+                    <div id="stateLoading" class="hidden my-auto space-y-5 py-6">
+                        <div class="flex items-center space-x-3 text-brand-600 dark:text-brand-400 mb-6">
+                            <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span class="text-sm font-semibold font-thai" id="loadingStatusText">ThaiLLM กำลังประมวลผลและสรุปใจความสำคัญ...</span>
                         </div>
 
-                        <!-- Footer indicator -->
-                        <div class="mt-6 pt-4 border-t border-slate-800 text-[11px] text-slate-500 flex items-center justify-between">
-                            <span>API: http://thaillm.or.th</span>
-                            <span>Engine: Pathumma Qwen3 8B</span>
+                        <!-- Skeleton bars with shimmer -->
+                        <div class="space-y-3.5">
+                            <div class="h-4 bg-slate-200 dark:bg-slate-800 rounded-lg w-full shimmer-active"></div>
+                            <div class="h-4 bg-slate-200 dark:bg-slate-800 rounded-lg w-11/12 shimmer-active"></div>
+                            <div class="h-4 bg-slate-200 dark:bg-slate-800 rounded-lg w-4/5 shimmer-active"></div>
+                            <div class="h-4 bg-slate-200 dark:bg-slate-800 rounded-lg w-10/12 shimmer-active"></div>
+                            <div class="h-4 bg-slate-200 dark:bg-slate-800 rounded-lg w-3/4 shimmer-active"></div>
+                        </div>
+
+                        <div class="pt-4 text-xs text-slate-400 dark:text-slate-500 font-thai flex items-center space-x-2">
+                            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-500"></i>
+                            <span>ใช้โมเดล Pathumma Qwen3 8B ของทางการ (thaillm.or.th)</span>
                         </div>
                     </div>
+
+                    <!-- 3. ERROR STATE -->
+                    <div id="stateError" class="hidden my-auto p-5 rounded-2xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/40 text-rose-700 dark:text-rose-300">
+                        <div class="flex items-start space-x-3">
+                            <i data-lucide="alert-triangle" class="w-5 h-5 text-rose-500 shrink-0 mt-0.5"></i>
+                            <div class="space-y-1">
+                                <h4 class="text-sm font-bold font-thai">ไม่สามารถประมวลผลได้</h4>
+                                <p id="errorMsgText" class="text-xs leading-relaxed text-rose-600 dark:text-rose-400 font-thai">
+                                    เกิดข้อผิดพลาดในการเชื่อมต่อกับ ThaiLLM API
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. SUCCESS CONTENT DISPLAY -->
+                    <div id="stateResult" class="hidden flex-1 flex flex-col justify-between">
+                        <div class="prose prose-slate dark:prose-invert max-w-none">
+                            <div 
+                                id="summaryTextOutput" 
+                                class="text-sm sm:text-base leading-relaxed sm:leading-loose text-slate-800 dark:text-slate-100 font-thai font-normal whitespace-pre-wrap select-text selection:bg-brand-500 selection:text-white"
+                            ></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Summary Analytics Bar (Only visible when result exists) -->
+                <div id="resultAnalyticsBar" class="hidden px-5 py-3 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30">
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="px-2 py-1.5 rounded-lg bg-white dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60">
+                            <div class="text-[10px] text-slate-400 font-thai">ความยาวต้นฉบับ</div>
+                            <div class="text-xs sm:text-sm font-bold font-mono text-slate-700 dark:text-slate-300 mt-0.5" id="statSrcLen">0</div>
+                        </div>
+                        <div class="px-2 py-1.5 rounded-lg bg-white dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60">
+                            <div class="text-[10px] text-slate-400 font-thai">ความยาวที่สรุปได้</div>
+                            <div class="text-xs sm:text-sm font-bold font-mono text-brand-600 dark:text-brand-400 mt-0.5" id="statSumLen">0</div>
+                        </div>
+                        <div class="px-2 py-1.5 rounded-lg bg-white dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60">
+                            <div class="text-[10px] text-slate-400 font-thai">ประหยัดพื้นที่เนื้อหา</div>
+                            <div class="text-xs sm:text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-0.5" id="statRatio">-0%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Attribution -->
+                <div class="px-5 py-3 border-t border-slate-100 dark:border-slate-800/80 bg-white dark:bg-[#0f172a] flex items-center justify-between text-[11px] text-slate-400 font-thai">
+                    <div class="flex items-center space-x-1.5">
+                        <i data-lucide="cpu" class="w-3.5 h-3.5 text-slate-400"></i>
+                        <span>โมเดล: Pathumma Qwen3 8B Think v3.0</span>
+                    </div>
+                    <span>thai-llm.or.th</span>
                 </div>
 
             </div>
-        </form>
+
+        </div>
 
     </main>
 
+    <!-- History Drawer (Slide-out) -->
+    <div id="historyDrawerBackdrop" onclick="toggleHistoryDrawer()" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 transition-opacity hidden opacity-0"></div>
+    <div id="historyDrawer" class="fixed top-0 right-0 bottom-0 w-full sm:w-96 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col shadow-2xl">
+        <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <i data-lucide="history" class="w-4 h-4 text-brand-500"></i>
+                <h3 class="text-sm font-bold text-slate-900 dark:text-white font-thai">ประวัติการสรุปความ</h3>
+            </div>
+            <div class="flex items-center space-x-1">
+                <button type="button" onclick="clearAllHistory()" class="text-xs text-rose-500 hover:text-rose-600 px-2 py-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 transition font-thai">ล้างประวัติ</button>
+                <button type="button" onclick="toggleHistoryDrawer()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+        <div id="historyListContainer" class="flex-1 overflow-y-auto p-4 space-y-3">
+            <!-- Dynamic history cards inserted via JS -->
+        </div>
+    </div>
+
+    <!-- Info / About Modal -->
+    <div id="infoModalBackdrop" onclick="closeInfoModal()" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 transition-opacity hidden opacity-0 flex items-center justify-center p-4">
+        <div onclick="event.stopPropagation()" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl transform transition-all font-thai">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center">
+                        <i data-lucide="sparkles" class="w-4 h-4"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-slate-900 dark:text-white">เกี่ยวกับ ThaiLLM Summarizer</h3>
+                </div>
+                <button type="button" onclick="closeInfoModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+                เว็บแอปพลิเคชันนี้ออกแบบมาสำหรับการสรุปข้อความภาษาไทยด้วย AI โมเดล <strong>Pathumma (Qwen3 8B Think 3.0.0)</strong> จากโครงการ ThaiLLM โดยเน้นการรักษาความถูกต้องของเนื้อหาเดิม ไม่แต่งเติมข้อมูล และสรุปให้อ่านง่าย
+            </p>
+            <div class="space-y-2 text-xs bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/60 text-slate-600 dark:text-slate-400">
+                <div class="flex justify-between">
+                    <span>API Endpoint:</span>
+                    <span class="font-mono text-slate-800 dark:text-slate-200">thaillm.or.th</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Model:</span>
+                    <span class="font-mono text-slate-800 dark:text-slate-200">pathumma-thaillm-qwen3-8b</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Stack:</span>
+                    <span class="text-slate-800 dark:text-slate-200">Flask + TailwindCSS + JS</span>
+                </div>
+            </div>
+            <div class="mt-5 text-right">
+                <button type="button" onclick="closeInfoModal()" class="px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-semibold hover:opacity-90 transition">
+                    ตกลง
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toastNotification" class="fixed bottom-5 right-5 z-50 flex items-center space-x-2 px-4 py-3 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-medium shadow-xl opacity-0 translate-y-3 pointer-events-none transition-all duration-300 font-thai">
+        <i data-lucide="check" class="w-4 h-4 text-emerald-400 dark:text-emerald-600" id="toastIcon"></i>
+        <span id="toastMessage">บันทึกเรียบร้อย</span>
+    </div>
+
     <!-- Footer -->
-    <footer class="border-t border-slate-800/80 py-4 text-center text-xs text-slate-500">
-        ThaiLLM Text Summarization &copy; 2026 | Powered by thaillm.or.th (Pathumma) & Flask
+    <footer class="border-t border-slate-200/80 dark:border-slate-800/80 py-4 bg-white/40 dark:bg-[#090d16]/40 text-center text-xs text-slate-500 font-thai">
+        <p>ThaiLLM Text Summarization Studio &copy; 2026 | พัฒนาด้วย Flask & ThaiLLM Pathumma</p>
     </footer>
 
+    <!-- Initial Data Inject from Server (Safe JSON Block - No IDE Syntax Errors) -->
+    <script id="serverResultData" type="application/json">
+        {% if result %}{{ result | tojson | safe }}{% else %}null{% endif %}
+    </script>
+    <script id="serverStyleData" type="application/json">
+        {{ (style or 'medium') | tojson | safe }}
+    </script>
+
+    <!-- Client-Side Logic & Enhancements -->
     <script>
-        // Init Lucide Icons
-        lucide.createIcons();
+        // Retrieve initial server-injected state safely
+        const serverResultEl = document.getElementById('serverResultData');
+        const serverStyleEl = document.getElementById('serverStyleData');
+        const initialServerResult = serverResultEl && serverResultEl.textContent.trim() ? JSON.parse(serverResultEl.textContent) : null;
+        const initialServerStyle = serverStyleEl && serverStyleEl.textContent.trim() ? JSON.parse(serverStyleEl.textContent) : 'medium';
 
-        const sampleContent = "ข้าว เป็นเมล็ดของพืชหญ้า Oryza sativa (ชื่อสามัญ: ข้าวเอเชีย) ที่พบมากในทวีปเอเชีย ข้าวเป็นธัญพืชซึ่งประชากรโลกบริโภคเป็นอาหารสำคัญ โดยเฉพาะอย่างยิ่งในทวีปเอเชีย จากข้อมูลเมื่อปี 2553 ข้าวเป็นธัญพืชซึ่งมีการปลูกมากที่สุดเป็นอันดับสามทั่วโลก รองจากข้าวสาลีและข้าวโพด ข้าวเป็นธัญพืชสำคัญที่สุดในด้านโภชนาการและการได้รับแคลอรีของมนุษย์ เพราะข้าวโพดส่วนใหญ่ปลูกเพื่อจุดประสงค์อื่น มิใช่ให้มนุษย์บริโภค ทั้งนี้ ข้าวคิดเป็นพลังงานกว่าหนึ่งในห้าที่มนุษย์ทั่วโลกบริโภค หลักฐานพันธุศาสตร์แสดงว่าข้าวมาจากการนำมาปลูกเมื่อราว 8,200–13,500 ปีก่อน ในภูมิภาคหุบแม่น้ำจูเจียงของจีน ก่อนหน้านี้ หลักฐานโบราณคดีเสนอว่า ข้าวมีการนำมาปลูกในเขตหุบแม่น้ำแยงซีในจีน ข้าวแพร่กระจายจากเอเชียตะวันออกไปยังเอเชียตะวันออกเฉียงใต้และเอเชียใต้ ข้าวถูกนำมายังทวีปยุโรปผ่านเอเชียตะวันตก และทวีปอเมริกาผ่านการยึดอาณานิคมของยุโรป[3] ปกติการปลูกข้าวเป็นแบบปีต่อปี ทว่าในเขตร้อน ข้าวสามารถมีชีวิตอยู่ได้หลายปีและสามารถไว้ตอ (ratoon) ได้นานถึง 30 ปี ต้นข้าวสามารถโตได้ถึง 1–1.8 เมตร ขึ้นอยู่กับพันธุ์และความอุดมสมบูรณ์ของดินเป็นหลัก มีใบเรียว ยาว 50-100 เซนติเมตร และกว้าง 2-2.5 เซนติเมตร ช่อดอกห้อยยาว 30-50 เซนติเมตร เมล็ดกินได้เป็นผลธัญพืชยาว 5-12 มิลลิเมตร และหนา 2-3 มิลลิเมตร การเตรียมดินสำหรับเพาะปลูกข้าวเหมาะกับประเทศและภูมิภาคที่ค่าแรงต่ำและฝนตกมาก เนื่องจากมันใช้แรงงานมากที่จะเตรียมดินและต้องการน้ำเพียงพอ อย่างไรก็ตาม ข้าวสามารถโตได้เกือบทุกที่ แม้บนเนินชันหรือเขตภูเขาที่ใช้ระบบควบคุมน้ำแบบขั้นบันได แม้ว่าสปีชีส์บุพการีของมันเป็นสิ่งพื้นเมืองของเอเชียและส่วนที่แน่นอนของแอฟริกา ร้อยปีของการค้าขายและการส่งออกทำให้มันสามัญในหลายวัฒนธรรมทั่วโลก";
+        // --- State Management ---
+        let currentStyle = initialServerStyle || 'medium';
+        let isProcessing = false;
+        let speechSynth = window.speechSynthesis;
+        let currentUtterance = null;
+        let isSpeaking = false;
 
-        function loadSampleText() {
-            const textarea = document.getElementById('src');
-            textarea.value = sampleContent;
-            updateCharCount();
-        }
+        const sampleThaiArticle = `ข้าว เป็นเมล็ดของพืชหญ้า Oryza sativa (ชื่อสามัญ: ข้าวเอเชีย) ที่พบมากในทวีปเอเชีย ข้าวเป็นธัญพืชซึ่งประชากรโลกบริโภคเป็นอาหารสำคัญ โดยเฉพาะอย่างยิ่งในทวีปเอเชีย จากข้อมูลเมื่อปี 2553 ข้าวเป็นธัญพืชซึ่งมีการปลูกมากที่สุดเป็นอันดับสามทั่วโลก รองจากข้าวสาลีและข้าวโพด ข้าวเป็นธัญพืชสำคัญที่สุดในด้านโภชนาการและการได้รับแคลอรีของมนุษย์ เพราะข้าวโพดส่วนใหญ่ปลูกเพื่อจุดประสงค์อื่น มิใช่ให้มนุษย์บริโภค ทั้งนี้ ข้าวคิดเป็นพลังงานกว่าหนึ่งในห้าที่มนุษย์ทั่วโลกบริโภค
 
-        function updateCharCount() {
-            const textarea = document.getElementById('src');
-            const clearBtn = document.getElementById('clearTextBtn');
-            const val = textarea.value;
+หลักฐานพันธุศาสตร์แสดงว่าข้าวมาจากการนำมาปลูกเมื่อราว 8,200–13,500 ปีก่อน ในภูมิภาคหุบแม่น้ำจูเจียงของจีน ก่อนหน้านี้ หลักฐานโบราณคดีเสนอว่า ข้าวมีการนำมาปลูกในเขตหุบแม่น้ำแยงซีในจีน ข้าวแพร่กระจายจากเอเชียตะวันออกไปยังเอเชียตะวันออกเฉียงใต้และเอเชียใต้ ข้าวถูกนำมายังทวีปยุโรปผ่านเอเชียตะวันตก และทวีปอเมริกาผ่านการยึดอาณานิคมของยุโรป
+
+ปกติการปลูกข้าวเป็นแบบปีต่อปี ทว่าในเขตร้อน ข้าวสามารถมีชีวิตอยู่ได้หลายปีและสามารถไว้ตอ (ratoon) ได้นานถึง 30 ปี ต้นข้าวสามารถโตได้ถึง 1–1.8 เมตร ขึ้นอยู่กับพันธุ์และความอุดมสมบูรณ์ของดินเป็นหลัก เมล็ดกินได้เป็นผลธัญพืชยาว 5-12 มิลลิเมตร และหนา 2-3 มิลลิเมตร การเตรียมดินสำหรับเพาะปลูกข้าวเหมาะกับประเทศและภูมิภาคที่ค่าแรงต่ำและฝนตกมาก เนื่องจากต้องใช้แรงงานมากและต้องการน้ำเพียงพอ อย่างไรก็ตาม ข้าวสามารถโตได้เกือบทุกที่ แม้บนเนินชันหรือเขตภูเขาที่ใช้ระบบควบคุมน้ำแบบขั้นบันได`;
+
+        // --- Theme Management ---
+        function initTheme() {
+            const savedTheme = localStorage.getItem('thaillm_theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             
-            document.getElementById('charCount').innerText = `${val.length} ตัวอักษร`;
-
-            if (val.length > 0) {
-                clearBtn.classList.remove('hidden');
+            if (savedTheme === 'light' || (!savedTheme && !prefersDark)) {
+                document.documentElement.classList.remove('dark');
+                document.getElementById('sunIcon').classList.add('hidden');
+                document.getElementById('moonIcon').classList.remove('hidden');
             } else {
-                clearBtn.classList.add('hidden');
+                document.documentElement.classList.add('dark');
+                document.getElementById('sunIcon').classList.remove('hidden');
+                document.getElementById('moonIcon').classList.add('hidden');
             }
         }
 
-        // 1. ลบเฉพาะข้อความต้นฉบับ
-        function clearInputOnly() {
-            const textarea = document.getElementById('src');
-            textarea.value = '';
-            textarea.focus();
-            updateCharCount();
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.contains('dark');
+            if (isDark) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('thaillm_theme', 'light');
+                document.getElementById('sunIcon').classList.add('hidden');
+                document.getElementById('moonIcon').classList.remove('hidden');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('thaillm_theme', 'dark');
+                document.getElementById('sunIcon').classList.remove('hidden');
+                document.getElementById('moonIcon').classList.add('hidden');
+            }
         }
 
-        // 2. ลบเฉพาะผลสรุปความภาษาไทย
-        function clearResultOnly() {
-            const resultBox = document.getElementById('resultContainer');
-            const clearResultBtn = document.getElementById('clearResultBtn');
-            const copyBtn = document.getElementById('copyBtn');
-
-            resultBox.innerHTML = `
-                <div class="h-64 flex flex-col items-center justify-center text-center text-slate-500 space-y-3">
-                    <div class="w-14 h-14 rounded-2xl bg-slate-800/50 border border-slate-700/50 flex items-center justify-center">
-                        <i data-lucide="message-square-quote" class="w-6 h-6 text-purple-400"></i>
-                    </div>
-                    <div>
-                        <p class="text-sm font-medium text-slate-400">ลบผลการสรุปความเรียบร้อย</p>
-                        <p class="text-xs text-slate-500 mt-1">กดปุ่ม "สรุปความด้วย ThaiLLM" เพื่อประมวลผลใหม่</p>
-                    </div>
-                </div>
-            `;
-            if (clearResultBtn) clearResultBtn.classList.add('hidden');
-            if (copyBtn) copyBtn.classList.add('hidden');
-            lucide.createIcons();
-        }
-
-        // 3. ลบทั้งข้อความต้นฉบับและผลสรุปความ
-        function clearAllData() {
-            clearInputOnly();
-            clearResultOnly();
-        }
-
-        function copyResult() {
-            const summaryElem = document.getElementById('summaryOutput');
-            if (!summaryElem) return;
-            const text = summaryElem.innerText;
-            navigator.clipboard.writeText(text).then(() => {
-                const copyTextElem = document.getElementById('copyText');
-                if (copyTextElem) {
-                    copyTextElem.innerText = "คัดลอกแล้ว!";
-                    setTimeout(() => {
-                        copyTextElem.innerText = "คัดลอก";
-                    }, 2000);
+        // --- Style Selector ---
+        function setStyle(styleName) {
+            currentStyle = styleName;
+            document.querySelectorAll('.style-pill').forEach(btn => {
+                if (btn.dataset.style === styleName) {
+                    btn.classList.add('bg-white', 'dark:bg-slate-700', 'shadow-subtle', 'text-slate-900', 'dark:text-white', 'font-semibold');
+                    btn.classList.remove('text-slate-600', 'dark:text-slate-400');
+                    const icon = btn.querySelector('svg, i');
+                    if (icon) icon.classList.add('text-brand-500');
+                } else {
+                    btn.classList.remove('bg-white', 'dark:bg-slate-700', 'shadow-subtle', 'text-slate-900', 'dark:text-white', 'font-semibold');
+                    btn.classList.add('text-slate-600', 'dark:text-slate-400');
+                    const icon = btn.querySelector('svg, i');
+                    if (icon) icon.classList.remove('text-brand-500');
                 }
             });
         }
 
-        updateCharCount();
+        // --- Input Metrics & Reactions ---
+        function onInputChanged() {
+            const val = document.getElementById('srcInput').value;
+            const length = val.length;
+            const words = val.trim() ? val.trim().split(/\s+/).length : 0;
+            // Approx reading speed ~ 150 words per minute
+            const readMinutes = Math.max(1, Math.ceil(words / 150));
 
-        // Loading state on submit
-        document.getElementById('summarizeForm').addEventListener('submit', function() {
-            const btn = document.getElementById('submitBtn');
-            btn.disabled = true;
-            btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> กำลังสรุปความด้วย ThaiLLM...`;
+            document.getElementById('charCountLabel').innerText = `${length.toLocaleString()} ตัวอักษร`;
+            document.getElementById('wordCountLabel').innerText = `${words.toLocaleString()} คำ`;
+            document.getElementById('readTimeLabel').innerText = length > 0 ? `เวลาอ่าน ~${readMinutes} นาที` : 'เวลาอ่าน ~0 นาที';
+
+            const clearBtn = document.getElementById('clearSourceBtn');
+            if (length > 0) {
+                clearBtn.classList.remove('opacity-0', 'pointer-events-none');
+            } else {
+                clearBtn.classList.add('opacity-0', 'pointer-events-none');
+            }
+        }
+
+        function loadSampleText() {
+            const input = document.getElementById('srcInput');
+            input.value = sampleThaiArticle;
+            onInputChanged();
+            input.focus();
+            showToast('ใส่ตัวอย่างบทความเรียบร้อยแล้ว');
+        }
+
+        async function pasteClipboard() {
+            try {
+                if (!navigator.clipboard || !navigator.clipboard.readText) {
+                    showToast('เบราว์เซอร์ไม่อนุญาตให้อ่าน Clipboard', 'alert');
+                    return;
+                }
+                const text = await navigator.clipboard.readText();
+                if (text) {
+                    const input = document.getElementById('srcInput');
+                    input.value = text;
+                    onInputChanged();
+                    showToast('วางข้อความจาก Clipboard สำเร็จ');
+                } else {
+                    showToast('ไม่พบข้อความใน Clipboard', 'alert');
+                }
+            } catch (err) {
+                showToast('เบราว์เซอร์ไม่อนุญาตให้อ่าน Clipboard', 'alert');
+            }
+        }
+
+        function clearSource() {
+            const input = document.getElementById('srcInput');
+            input.value = '';
+            onInputChanged();
+            input.focus();
+        }
+
+        function resetAll() {
+            clearSource();
+            clearResult();
+            showToast('รีเซ็ตข้อมูลทั้งหมดแล้ว');
+        }
+
+        // --- Summarize Execution (AJAX) ---
+        async function triggerSummarize() {
+            if (isProcessing) return;
+            const srcText = document.getElementById('srcInput').value.trim();
+
+            if (!srcText) {
+                showToast('กรุณากรอกหรือวางข้อความภาษาไทยก่อนเริ่มสรุป', 'alert');
+                document.getElementById('srcInput').focus();
+                return;
+            }
+
+            // Stop any ongoing speech
+            stopSpeech();
+
+            // Set Loading UI
+            setProcessingUI(true);
+
+            try {
+                const response = await fetch('/summarize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        src: srcText,
+                        style: currentStyle
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.ok) {
+                    renderSuccessResult(data);
+                    saveToHistory(srcText, data.summary, currentStyle, data.model);
+                    showToast('สรุปความสำเร็จแล้ว!');
+                } else {
+                    renderErrorResult(data.errmsg || 'ไม่สามารถสรุปข้อความได้ โปรดตรวจสอบการเชื่อมต่อกับ ThaiLLM');
+                }
+            } catch (error) {
+                renderErrorResult('เกิดข้อผิดพลาดในการส่งข้อมูล: ' + error.message);
+            } finally {
+                setProcessingUI(false);
+            }
+        }
+
+        function setProcessingUI(loading) {
+            isProcessing = loading;
+            const submitBtn = document.getElementById('submitActionBtn');
+            const submitLabel = document.getElementById('submitLabel');
+            const submitIcon = document.getElementById('submitIcon');
+            const stateEmpty = document.getElementById('stateEmpty');
+            const stateLoading = document.getElementById('stateLoading');
+            const stateError = document.getElementById('stateError');
+            const stateResult = document.getElementById('stateResult');
+            const resultToolbar = document.getElementById('resultToolbar');
+            const analyticsBar = document.getElementById('resultAnalyticsBar');
+
+            if (loading) {
+                submitBtn.disabled = true;
+                submitLabel.innerText = 'กำลังสรุปความ...';
+                submitIcon.classList.add('animate-spin');
+
+                stateEmpty.classList.add('hidden');
+                stateError.classList.add('hidden');
+                stateResult.classList.add('hidden');
+                resultToolbar.style.display = 'none';
+                analyticsBar.classList.add('hidden');
+
+                stateLoading.classList.remove('hidden');
+            } else {
+                submitBtn.disabled = false;
+                submitLabel.innerText = 'สรุปความด้วย ThaiLLM';
+                submitIcon.classList.remove('animate-spin');
+                stateLoading.classList.add('hidden');
+            }
+        }
+
+        function renderSuccessResult(data) {
+            const stateEmpty = document.getElementById('stateEmpty');
+            const stateLoading = document.getElementById('stateLoading');
+            const stateError = document.getElementById('stateError');
+            const stateResult = document.getElementById('stateResult');
+            const resultText = document.getElementById('summaryTextOutput');
+            const resultToolbar = document.getElementById('resultToolbar');
+            const analyticsBar = document.getElementById('resultAnalyticsBar');
+            const modelBadge = document.getElementById('modelBadge');
+
+            stateEmpty.classList.add('hidden');
+            stateLoading.classList.add('hidden');
+            stateError.classList.add('hidden');
+
+            resultText.innerText = data.summary;
+            stateResult.classList.remove('hidden');
+            resultToolbar.style.display = 'flex';
+            analyticsBar.classList.remove('hidden');
+
+            if (data.model) {
+                modelBadge.innerText = data.model.includes('pathumma') ? 'Pathumma 8B' : data.model;
+                modelBadge.classList.remove('hidden');
+            }
+
+            // Update stats
+            const srcLen = data.src_length || 0;
+            const sumLen = data.summary_length || data.summary.length;
+            const reduction = srcLen > 0 ? Math.max(0, Math.round(((srcLen - sumLen) / srcLen) * 100)) : 0;
+
+            document.getElementById('statSrcLen').innerText = `${srcLen.toLocaleString()} ตัวอักษร`;
+            document.getElementById('statSumLen').innerText = `${sumLen.toLocaleString()} ตัวอักษร`;
+            document.getElementById('statRatio').innerText = `-${reduction}%`;
+        }
+
+        function renderErrorResult(errorMessage) {
+            const stateEmpty = document.getElementById('stateEmpty');
+            const stateLoading = document.getElementById('stateLoading');
+            const stateError = document.getElementById('stateError');
+            const stateResult = document.getElementById('stateResult');
+            const resultToolbar = document.getElementById('resultToolbar');
+            const analyticsBar = document.getElementById('resultAnalyticsBar');
+
+            stateEmpty.classList.add('hidden');
+            stateLoading.classList.add('hidden');
+            stateResult.classList.add('hidden');
+            resultToolbar.style.display = 'none';
+            analyticsBar.classList.add('hidden');
+
+            document.getElementById('errorMsgText').innerText = errorMessage;
+            stateError.classList.remove('hidden');
+        }
+
+        function clearResult() {
+            stopSpeech();
+            const stateEmpty = document.getElementById('stateEmpty');
+            const stateLoading = document.getElementById('stateLoading');
+            const stateError = document.getElementById('stateError');
+            const stateResult = document.getElementById('stateResult');
+            const resultToolbar = document.getElementById('resultToolbar');
+            const analyticsBar = document.getElementById('resultAnalyticsBar');
+            const modelBadge = document.getElementById('modelBadge');
+
+            stateLoading.classList.add('hidden');
+            stateError.classList.add('hidden');
+            stateResult.classList.add('hidden');
+            resultToolbar.style.display = 'none';
+            analyticsBar.classList.add('hidden');
+            modelBadge.classList.add('hidden');
+
+            stateEmpty.classList.remove('hidden');
+            showToast('ลบผลการสรุปแล้ว');
+        }
+
+        // --- Copy to Clipboard ---
+        function copySummary() {
+            const summaryText = document.getElementById('summaryTextOutput').innerText;
+            if (!summaryText) return;
+
+            const onCopySuccess = () => {
+                const copyTextElem = document.getElementById('copyText');
+                const copyIcon = document.getElementById('copyIcon');
+                
+                copyTextElem.innerText = 'คัดลอกแล้ว!';
+                copyIcon.setAttribute('data-lucide', 'check');
+                lucide.createIcons();
+                
+                showToast('คัดลอกผลสรุปไปยัง Clipboard แล้ว');
+                setTimeout(() => {
+                    copyTextElem.innerText = 'คัดลอก';
+                    copyIcon.setAttribute('data-lucide', 'copy');
+                    lucide.createIcons();
+                }, 2000);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(summaryText).then(onCopySuccess).catch(() => {
+                    fallbackCopyText(summaryText, onCopySuccess);
+                });
+            } else {
+                fallbackCopyText(summaryText, onCopySuccess);
+            }
+        }
+
+        function fallbackCopyText(text, callback) {
+            const tempArea = document.createElement('textarea');
+            tempArea.value = text;
+            tempArea.style.position = 'fixed';
+            tempArea.style.opacity = '0';
+            document.body.appendChild(tempArea);
+            tempArea.select();
+            try {
+                document.execCommand('copy');
+                if (callback) callback();
+            } catch (e) {
+                showToast('ไม่สามารถคัดลอกได้', 'alert');
+            }
+            document.body.removeChild(tempArea);
+        }
+
+        // --- Download Summary as .txt ---
+        function downloadSummary() {
+            const summaryText = document.getElementById('summaryTextOutput').innerText;
+            if (!summaryText) return;
+
+            const blob = new Blob([summaryText], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `thaillm_summary_${new Date().toISOString().slice(0,10)}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('ดาวน์โหลดไฟล์ข้อความเรียบร้อย');
+        }
+
+        // --- Text-to-Speech (Thai Web Speech API) ---
+        function toggleSpeech() {
+            if (!('speechSynthesis' in window)) {
+                showToast('เบราว์เซอร์นี้ไม่รองรับระบบอ่านออกเสียง', 'alert');
+                return;
+            }
+
+            if (isSpeaking) {
+                stopSpeech();
+            } else {
+                startSpeech();
+            }
+        }
+
+        function startSpeech() {
+            const text = document.getElementById('summaryTextOutput').innerText;
+            if (!text) return;
+
+            stopSpeech();
+
+            currentUtterance = new SpeechSynthesisUtterance(text);
+            currentUtterance.lang = 'th-TH';
+            currentUtterance.rate = 1.0;
+
+            currentUtterance.onstart = () => {
+                isSpeaking = true;
+                document.getElementById('speechText').innerText = 'หยุดอ่าน';
+                document.getElementById('speakBtn').classList.add('text-rose-500', 'bg-rose-50', 'dark:bg-rose-950/30');
+            };
+
+            currentUtterance.onend = currentUtterance.onerror = () => {
+                stopSpeech();
+            };
+
+            speechSynth.speak(currentUtterance);
+        }
+
+        function stopSpeech() {
+            if (speechSynth) speechSynth.cancel();
+            isSpeaking = false;
+            const btn = document.getElementById('speakBtn');
+            const txt = document.getElementById('speechText');
+            if (txt) txt.innerText = 'ฟังเสียง';
+            if (btn) btn.classList.remove('text-rose-500', 'bg-rose-50', 'dark:bg-rose-950/30');
+        }
+
+        // --- History (LocalStorage) ---
+        function getHistory() {
+            try {
+                return JSON.parse(localStorage.getItem('thaillm_summaries_history') || '[]');
+            } catch {
+                return [];
+            }
+        }
+
+        function saveToHistory(src, summary, style, model) {
+            const history = getHistory();
+            const newItem = {
+                id: Date.now(),
+                timestamp: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
+                date: new Date().toLocaleDateString('th-TH'),
+                srcPreview: src.slice(0, 100) + (src.length > 100 ? '...' : ''),
+                srcFull: src,
+                summary: summary,
+                style: style,
+                model: model || 'Pathumma 8B'
+            };
+            history.unshift(newItem);
+            // Limit to 15 items
+            const trimmed = history.slice(0, 15);
+            localStorage.setItem('thaillm_summaries_history', JSON.stringify(trimmed));
+            updateHistoryUI();
+        }
+
+        function updateHistoryUI() {
+            const history = getHistory();
+            const badge = document.getElementById('historyBadge');
+            const container = document.getElementById('historyListContainer');
+
+            if (history.length > 0) {
+                badge.innerText = history.length;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+
+            if (!container) return;
+
+            if (history.length === 0) {
+                container.innerHTML = `
+                    <div class="h-64 flex flex-col items-center justify-center text-center text-slate-400">
+                        <i data-lucide="inbox" class="w-8 h-8 mb-2 stroke-1"></i>
+                        <p class="text-xs font-thai">ยังไม่มีประวัติการสรุปความ</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            container.innerHTML = history.map(item => `
+                <div class="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 hover:border-brand-500/50 transition cursor-pointer font-thai" onclick="restoreHistoryItem(${item.id})">
+                    <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1.5">
+                        <span class="font-mono">${item.date} ${item.timestamp}</span>
+                        <span class="px-2 py-0.5 rounded bg-brand-500/10 text-brand-600 dark:text-brand-400 font-semibold">${item.style}</span>
+                    </div>
+                    <div class="text-xs text-slate-700 dark:text-slate-300 line-clamp-2 leading-relaxed">
+                        ${item.summary}
+                    </div>
+                </div>
+            `).join('');
+
+            lucide.createIcons();
+        }
+
+        function restoreHistoryItem(id) {
+            const history = getHistory();
+            const item = history.find(h => h.id === id);
+            if (!item) return;
+
+            document.getElementById('srcInput').value = item.srcFull;
+            onInputChanged();
+            setStyle(item.style || 'medium');
+            renderSuccessResult({
+                ok: true,
+                summary: item.summary,
+                src_length: item.srcFull.length,
+                summary_length: item.summary.length,
+                model: item.model
+            });
+            toggleHistoryDrawer();
+            showToast('โหลดข้อมูลจากประวัติเรียบร้อย');
+        }
+
+        function clearAllHistory() {
+            localStorage.removeItem('thaillm_summaries_history');
+            updateHistoryUI();
+            showToast('ล้างประวัติการสรุปทั้งหมดแล้ว');
+        }
+
+        function toggleHistoryDrawer() {
+            const drawer = document.getElementById('historyDrawer');
+            const backdrop = document.getElementById('historyDrawerBackdrop');
+            const isOpen = !drawer.classList.contains('translate-x-full');
+
+            if (isOpen) {
+                drawer.classList.add('translate-x-full');
+                backdrop.classList.add('opacity-0');
+                setTimeout(() => backdrop.classList.add('hidden'), 300);
+            } else {
+                updateHistoryUI();
+                backdrop.classList.remove('hidden');
+                setTimeout(() => {
+                    backdrop.classList.remove('opacity-0');
+                    drawer.classList.remove('translate-x-full');
+                }, 10);
+            }
+        }
+
+        // --- Modals & Toasts ---
+        function openInfoModal() {
+            const backdrop = document.getElementById('infoModalBackdrop');
+            backdrop.classList.remove('hidden');
+            setTimeout(() => backdrop.classList.remove('opacity-0'), 10);
+        }
+
+        function closeInfoModal() {
+            const backdrop = document.getElementById('infoModalBackdrop');
+            backdrop.classList.add('opacity-0');
+            setTimeout(() => backdrop.classList.add('hidden'), 300);
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toastNotification');
+            const msg = document.getElementById('toastMessage');
+            const icon = document.getElementById('toastIcon');
+
+            msg.innerText = message;
+            if (type === 'alert') {
+                icon.setAttribute('data-lucide', 'alert-circle');
+                icon.className = 'w-4 h-4 text-rose-400 dark:text-rose-600';
+            } else {
+                icon.setAttribute('data-lucide', 'check');
+                icon.className = 'w-4 h-4 text-emerald-400 dark:text-emerald-600';
+            }
+            lucide.createIcons();
+
+            toast.classList.remove('opacity-0', 'translate-y-3', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-3', 'pointer-events-none');
+            }, 3000);
+        }
+
+        // --- Keyboard Shortcuts (Ctrl/Cmd + Enter) ---
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                triggerSummarize();
+            }
+            if (e.key === 'Escape') {
+                closeInfoModal();
+                const drawer = document.getElementById('historyDrawer');
+                if (!drawer.classList.contains('translate-x-full')) {
+                    toggleHistoryDrawer();
+                }
+            }
+        });
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            lucide.createIcons();
+            onInputChanged();
+            updateHistoryUI();
+
+            // If SSR passed initial result, render it
+            if (initialServerResult && initialServerResult.ok) {
+                renderSuccessResult(initialServerResult);
+            } else if (initialServerResult && !initialServerResult.ok) {
+                renderErrorResult(initialServerResult.errmsg);
+            }
         });
     </script>
 </body>
